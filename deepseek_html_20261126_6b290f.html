@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="midnight">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>CLIPFORGE AI</title>
+<link rel="stylesheet" href="css/theme.css" />
+<link rel="stylesheet" href="css/app.css" />
+<!-- UMD libraries (versi dipin) -->
+<script src="https://cdn.jsdelivr.net/npm/mp4box@0.5.2/dist/mp4box.all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.4/build/mp4-muxer.js"></script>
+</head>
+<body>
+<div id="app" class="app-shell">
+
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-logo">CF</div>
+      <div>
+        <div class="brand-name">CLIPFORGE <span>AI</span></div>
+        <input id="projectName" class="project-name" value="Untitled Project" aria-label="Nama proyek" />
+      </div>
+    </div>
+    <div class="topbar-center">
+      <span id="hwBadge" class="badge">Deteksi perangkat…</span>
+      <span id="procBadge" class="badge badge-muted">Idle</span>
+    </div>
+    <div class="topbar-right">
+      <select id="themeSwitcher" class="select" aria-label="Tema">
+        <option value="midnight">Midnight Dark</option>
+        <option value="graphite">Graphite Studio</option>
+        <option value="light">Light Professional</option>
+        <option value="neon">Neon Creator</option>
+      </select>
+      <button id="btnSettings" class="btn btn-ghost" title="Pengaturan">⚙</button>
+    </div>
+  </header>
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar" id="sidebar">
+    <button class="nav-item active" data-view="dashboard" title="Dashboard"><span class="nav-ico">▦</span><span class="nav-label">Dashboard</span></button>
+    <button class="nav-item" data-view="upload" title="Upload"><span class="nav-ico">⬆</span><span class="nav-label">Upload Video</span></button>
+    <button class="nav-item" data-view="analysis" title="AI Analysis"><span class="nav-ico">◎</span><span class="nav-label">AI Analysis</span></button>
+    <button class="nav-item" data-view="clips" title="My Clips"><span class="nav-ico">✂</span><span class="nav-label">My Clips</span></button>
+    <button class="nav-item" data-view="subtitles" title="Subtitle"><span class="nav-ico">CC</span><span class="nav-label">Subtitle Editor</span></button>
+    <button class="nav-item" data-view="thumbnails" title="Thumbnail"><span class="nav-ico">▣</span><span class="nav-label">Thumbnail Studio</span></button>
+    <button class="nav-item" data-view="export" title="Export"><span class="nav-ico">⤓</span><span class="nav-label">Export Center</span></button>
+    <button class="nav-item" data-view="settings" title="Settings"><span class="nav-ico">⚙</span><span class="nav-label">Settings</span></button>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="workspace">
+
+    <!-- DASHBOARD -->
+    <section class="view active" id="view-dashboard">
+      <div class="card-grid">
+        <div class="card">
+          <h3>Profil Perangkat</h3>
+          <div id="hwCard" class="hw-card">Memuat…</div>
+        </div>
+        <div class="card">
+          <h3>Proyek Aktif</h3>
+          <div id="projectSummary" class="muted">Belum ada video.</div>
+        </div>
+        <div class="card">
+          <h3>Status Pipeline</h3>
+          <div id="pipelineStatus" class="muted">Upload video untuk memulai.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- UPLOAD -->
+    <section class="view" id="view-upload">
+      <div class="upload-zone" id="dropZone">
+        <div class="upload-inner">
+          <div class="upload-icon">⬆</div>
+          <p><strong>Drag &amp; Drop video</strong> atau</p>
+          <button id="btnBrowse" class="btn btn-primary">Browse File</button>
+          <input type="file" id="fileInput" accept="video/mp4,video/quicktime,video/webm,video/*" hidden />
+          <p class="muted small">MP4 / MOV / WebM • target ±30 menit (300 MB – 2 GB)</p>
+        </div>
+      </div>
+      <div id="videoMeta" class="video-meta hidden"></div>
+      <div class="row gap" id="uploadActions" style="display:none">
+        <button id="btnAnalyze" class="btn btn-primary">Mulai Analisis AI</button>
+        <button id="btnRemoveVideo" class="btn btn-danger">Hapus Video</button>
+      </div>
+    </section>
+
+    <!-- ANALYSIS -->
+    <section class="view" id="view-analysis">
+      <div class="panel-row">
+        <div class="panel">
+          <h3>Parameter Analisis</h3>
+          <label>Jumlah clip rekomendasi
+            <select id="clipCount" class="select">
+              <option>5</option><option selected>10</option><option>15</option><option value="custom">Custom…</option>
+            </select>
+          </label>
+          <label id="customCountWrap" class="hidden">Custom <input id="customCount" type="number" min="1" max="50" value="8" class="input" /></label>
+          <label>Target durasi
+            <select id="targetDur" class="select">
+              <option value="15">15s</option><option value="20">20s</option>
+              <option value="30" selected>30s</option><option value="60">60s</option>
+              <option value="custom">Custom…</option>
+            </select>
+          </label>
+          <label id="customDurWrap" class="hidden">Custom (10–180s) <input id="customDur" type="number" min="10" max="180" value="25" class="input" /></label>
+          <div class="row gap">
+            <button id="btnRunAnalysis" class="btn btn-primary">Analisis Sekarang</button>
+            <button id="btnCancelAnalysis" class="btn btn-ghost" disabled>Cancel</button>
+          </div>
+          <div class="progress"><div id="analysisBar" class="progress-fill" style="width:0%"></div></div>
+          <div id="analysisLog" class="log muted small"></div>
+        </div>
+        <div class="panel">
+          <h3>Kandidat Highlight</h3>
+          <div id="candidateList" class="candidate-list"><div class="empty">Belum ada hasil analisis.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CLIPS -->
+    <section class="view" id="view-clips">
+      <div class="panel">
+        <div class="row space-between">
+          <h3>My Clips</h3>
+          <button id="btnAddManualClip" class="btn btn-ghost">+ Clip Manual</button>
+        </div>
+        <div id="clipList" class="clip-list"><div class="empty">Belum ada clip.</div></div>
+      </div>
+    </section>
+
+    <!-- SUBTITLES -->
+    <section class="view" id="view-subtitles">
+      <div class="panel-row">
+        <div class="panel">
+          <h3>Segmen Subtitle</h3>
+          <div class="row gap">
+            <button id="btnImportSrt" class="btn btn-ghost">Import .SRT/.VTT</button>
+            <input type="file" id="srtInput" accept=".srt,.vtt" hidden />
+            <button id="btnExportSrt" class="btn btn-ghost">Export .SRT</button>
+            <button id="btnExportVtt" class="btn btn-ghost">Export .VTT</button>
+          </div>
+          <div id="subtitleList" class="subtitle-list"><div class="empty">Belum ada subtitle.</div></div>
+        </div>
+        <div class="panel">
+          <h3>Gaya Subtitle</h3>
+          <label>Preset
+            <select id="subPreset" class="select">
+              <option value="modern">Modern Minimal</option>
+              <option value="bold">Bold Creator</option>
+              <option value="karaoke">Karaoke Highlight</option>
+              <option value="podcast">Podcast Style</option>
+              <option value="cinematic">Cinematic</option>
+              <option value="viral">Social Media Viral</option>
+              <option value="clean">Clean Professional</option>
+            </select>
+          </label>
+          <label>Font size <input id="subSize" type="range" min="16" max="80" value="36" class="range" /></label>
+          <label>Warna teks <input id="subColor" type="color" value="#ffffff" /></label>
+          <label>Warna highlight <input id="subHighlight" type="color" value="#00e5ff" /></label>
+          <label>Outline <input id="subOutline" type="range" min="0" max="10" value="3" class="range" /></label>
+          <label>Background opacity <input id="subBgOpacity" type="range" min="0" max="100" value="45" class="range" /></label>
+        </div>
+      </div>
+    </section>
+
+    <!-- THUMBNAILS -->
+    <section class="view" id="view-thumbnails">
+      <div class="panel">
+        <h3>Thumbnail Studio</h3>
+        <div id="thumbGrid" class="thumb-grid"><div class="empty">Belum ada clip.</div></div>
+      </div>
+    </section>
+
+    <!-- EXPORT -->
+    <section class="view" id="view-export">
+      <div class="panel">
+        <h3>Export Settings</h3>
+        <div class="grid-2">
+          <label>Resolution
+            <select id="expRes" class="select">
+              <option value="720p">720p HD</option>
+              <option value="1080p" selected>1080p Full HD</option>
+            </select>
+          </label>
+          <label>Frame Rate
+            <select id="expFps" class="select">
+              <option value="30" selected>30 FPS</option>
+              <option value="60">60 FPS</option>
+            </select>
+          </label>
+          <label>Aspect Ratio
+            <select id="expAspect" class="select">
+              <option value="9:16" selected>9:16 (Vertical)</option>
+              <option value="16:9">16:9 (Horizontal)</option>
+            </select>
+          </label>
+          <label>Bitrate (Mbps) <input id="expBitrate" type="number" min="1" max="30" value="8" class="input" /></label>
+        </div>
+        <div class="row gap">
+          <button id="btnExportAll" class="btn btn-primary">Export All</button>
+          <button id="btnExportSelected" class="btn btn-ghost">Export Selected</button>
+          <button id="btnCancelExport" class="btn btn-danger" disabled>Cancel</button>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Antrean Ekspor</h3>
+        <div id="exportQueue" class="export-queue"><div class="empty">Belum ada antrean.</div></div>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="view" id="view-settings">
+      <div class="panel">
+        <h3>Diagnostik Kompatibilitas</h3>
+        <div id="compatPanel" class="compat"></div>
+      </div>
+      <div class="panel">
+        <h3>AI Enhanced (Opsional)</h3>
+        <p class="muted small">API key disimpan di sessionStorage hanya setelah Anda menekan Simpan. Tidak ditanam di kode.</p>
+        <label>Provider
+          <select id="aiProvider" class="select">
+            <option value="openai">OpenAI-compatible</option>
+            <option value="gemini">Gemini</option>
+          </select>
+        </label>
+        <label>Base URL <input id="aiBase" class="input" value="https://api.openai.com/v1" /></label>
+        <label>API Key <input id="aiKey" type="password" class="input" placeholder="sk-…" /></label>
+        <label>Model <input id="aiModel" class="input" value="gpt-4o-mini" /></label>
+        <button id="btnSaveAI" class="btn btn-primary">Simpan Konfigurasi AI</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- INSPECTOR / PREVIEW + TIMELINE (desktop kanan) -->
+  <aside class="inspector" id="inspector">
+    <div class="preview-wrap">
+      <video id="preview" class="preview" playsinline muted></video>
+      <canvas id="previewCanvas" class="preview hidden"></canvas>
+      <div id="safeArea" class="safe-area hidden"></div>
+    </div>
+    <div class="inspector-tabs">
+      <button class="tab active" data-tab="info">Info</button>
+      <button class="tab" data-tab="effects">Efek</button>
+      <button class="tab" data-tab="brand">Branding</button>
+    </div>
+    <div class="tab-body" id="tab-info">
+      <div id="clipInfo" class="muted small">Pilih clip untuk detail.</div>
+    </div>
+    <div class="tab-body hidden" id="tab-effects">
+      <label>Zoom <select id="fxZoom" class="select">
+        <option value="none">None</option><option value="in">Smooth Zoom In</option>
+        <option value="out">Smooth Zoom Out</option><option value="punch">Dynamic Punch In</option>
+      </select></label>
+      <label>Intensitas <input id="fxZoomAmt" type="range" min="0" max="100" value="60" class="range" /></label>
+      <label>Color grade <select id="fxGrade" class="select">
+        <option value="none">None</option><option value="cinematic">Cinematic</option>
+        <option value="contrast">Contrast</option>
+      </select></label>
+      <label>Vignette <input id="fxVignette" type="range" min="0" max="100" value="0" class="range" /></label>
+      <label>Grain <input id="fxGrain" type="range" min="0" max="100" value="0" class="range" /></label>
+    </div>
+    <div class="tab-body hidden" id="tab-brand">
+      <button id="btnUploadLogo" class="btn btn-ghost">Upload Logo</button>
+      <input type="file" id="logoInput" accept="image/png,image/jpeg,image/svg+xml" hidden />
+      <label>Posisi <select id="logoPos" class="select">
+        <option value="tr">Kanan Atas</option><option value="tl">Kiri Atas</option>
+        <option value="br">Kanan Bawah</option><option value="bl">Kiri Bawah</option>
+        <option value="tc">Tengah Atas</option>
+      </select></label>
+      <label>Skala <input id="logoScale" type="range" min="5" max="35" value="12" class="range" /></label>
+      <label>Opacity <input id="logoOpacity" type="range" min="10" max="100" value="100" class="range" /></label>
+    </div>
+  </aside>
+
+  <!-- TIMELINE -->
+  <footer class="timeline" id="timeline">
+    <div class="timeline-controls">
+      <button id="btnPlay" class="btn btn-ghost">▶</button>
+      <span id="timeDisplay" class="mono small">00:00:00.000</span>
+    </div>
+    <div class="timeline-track" id="timelineTrack">
+      <div id="timelineWave" class="wave"></div>
+      <div id="timelineMarkers" class="markers"></div>
+      <div id="timelineRange" class="range-overlay"></div>
+    </div>
+  </footer>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+<div id="modal" class="modal hidden"><div class="modal-box" id="modalBox"></div></div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
